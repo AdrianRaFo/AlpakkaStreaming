@@ -4,7 +4,7 @@
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.alpakka.amqp._
-import akka.stream.alpakka.amqp.scaladsl.AmqpRpcFlow
+import akka.stream.alpakka.amqp.scaladsl.{AmqpRpcFlow, AmqpSink}
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
 
@@ -20,7 +20,7 @@ object Producer extends App {
   val queueName        = "akkaMQ"
   val queueDeclaration = QueueDeclaration(queueName)
 
-  val amqpRpcFlow = AmqpRpcFlow.simple(
+  val amqpRpcFlow = AmqpSink.simple(
     AmqpSinkSettings(connectionProvider)
       .withRoutingKey(queueName)
       .withDeclarations(queueDeclaration)
@@ -31,8 +31,7 @@ object Producer extends App {
   val source = Source
     .single(message)
     .map(s => ByteString(s))
-    .viaMat(amqpRpcFlow)(Keep.right)
-    .to(Sink.ignore)
+    .toMat(amqpRpcFlow)(Keep.right)
     .run
   
   println(s" [x] Sent '$message'")
