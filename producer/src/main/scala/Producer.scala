@@ -1,21 +1,40 @@
 /**
-  * https://github.com/AdrianRaFo
-  */
+ * https://github.com/AdrianRaFo
+ */
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.alpakka.amqp._
+import akka.stream.alpakka.amqp.scaladsl.AmqpRpcFlow
+import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.util.ByteString
 
 object Producer extends App {
-//  private val QUEUE_NAME = "hello"
-//
-//  val factory = new ConnectionFactory()
-//  factory.setHost("localhost")
-//  val connection = factory.newConnection()
-//  val channel    = connection.createChannel()
-//
-//  channel.queueDeclare(QUEUE_NAME, false, false, false, null)
-//  val message = "Hello World!"
-//  channel.basicPublish("", QUEUE_NAME, null, message.getBytes)
-//  println(" [x] Sent '" + message + "'")
-//
-//  channel.close()
-//  connection.close()
+
+  implicit val system       : ActorSystem       = ActorSystem()
+  implicit val materializer : ActorMaterializer = ActorMaterializer()
+
+  import system.dispatcher
+
+  val connectionProvider = AmqpDetailsConnectionProvider("localhost", 5672)
+
+  val queueName        = "akkaMQ"
+  val queueDeclaration = QueueDeclaration(queueName)
+
+  val amqpRpcFlow = AmqpRpcFlow.simple(
+    AmqpSinkSettings(connectionProvider)
+      .withRoutingKey(queueName)
+      .withDeclarations(queueDeclaration)
+  )
+
+  val message = "Hello World!"
+
+  val source = Source
+    .single(message)
+    .map(s => ByteString(s))
+    .viaMat(amqpRpcFlow)(Keep.right)
+    .to(Sink.foreach(btStr  => println(s" [x] Sent '${btStr.utf8String}'")))
+    .run
+
+  source.onComplete(_ =>system.terminate())
 
 }
