@@ -32,9 +32,10 @@ object Producer extends App {
     .single(message)
     .map(s => ByteString(s))
     .viaMat(amqpRpcFlow)(Keep.right)
-    .to(Sink.foreach(btStr  => println(s" [x] Sent '${btStr.utf8String}'")))
+    .to(Sink.ignore)
     .run
-
+  
+  println(s" [x] Sent '$message'")
   source.onComplete(_ =>system.terminate())
 
 }
