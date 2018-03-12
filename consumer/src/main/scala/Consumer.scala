@@ -1,28 +1,26 @@
 /**
-  * https://github.com/AdrianRaFo
-  */
+ * https://github.com/AdrianRaFo
+ */
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.alpakka.amqp._
+import akka.stream.alpakka.amqp.scaladsl.AmqpSource
+import akka.stream.scaladsl.Sink
 
 object Consumer extends App {
+  implicit val system       : ActorSystem       = ActorSystem()
+  implicit val materializer : ActorMaterializer = ActorMaterializer()
 
-//  private val QUEUE_NAME = "hello"
-//
-//  val factory = new ConnectionFactory()
-//  factory.setHost("localhost")
-//  val connection = factory.newConnection()
-//  val channel = connection.createChannel()
-//
-//  channel.queueDeclare(QUEUE_NAME, false, false, false, null)
-//  println(" [*] Waiting for messages. To exit press CTRL+C")
-//
-//  val consumer = new DefaultConsumer(channel) {
-//    override def handleDelivery(consumerTag: String,
-//                                envelope: Envelope,
-//                                properties: AMQP.BasicProperties,
-//                                body: Array[Byte]): Unit = {
-//      val message = new String(body, "UTF-8")
-//      System.out.println(" [x] Received '" + message + "'")
-//    }
-//  }
-//  channel.basicConsume(QUEUE_NAME, true, consumer)
+  val connectionProvider = AmqpDetailsConnectionProvider("localhost", 5672)
+
+  private val queueName = "akkaMQ"
+
+  val queueDeclaration = QueueDeclaration(queueName)
+
+  val amqpSource = AmqpSource.atMostOnceSource(
+    NamedQueueSourceSettings(AmqpLocalConnectionProvider, queueName)
+      .withDeclarations(queueDeclaration),
+    bufferSize = 10
+  ).runWith(Sink.foreach(btStr  => println(btStr.bytes.utf8String)))
 
 }
